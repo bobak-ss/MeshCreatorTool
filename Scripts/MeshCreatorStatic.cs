@@ -4,53 +4,9 @@ namespace MeshCreatorTool
 {
     public static class MeshCreatorStatic
     {
-        public static Mesh CreateRectangle(Vector3[] m, Vector3[] n)
+        public static Mesh Create2dMesh(Vector3[] points, Vector3 centerPoint)
         {
-            // vertices & uvs
-            Vector3[] vertices = new Vector3[m.Length + n.Length];
-            Vector2[] uv = new Vector2[vertices.Length];
-            Vector3[] normals = new Vector3[vertices.Length];
-            float eachTriangleX = 1f / (float)(m.Length - 1);
-            for (int i = 0; i < m.Length; i++)
-            {
-                vertices[i] = m[i];
-                uv[i] = new Vector2(i * eachTriangleX , 0f);
-                normals[i] = Vector3.back;
-
-                vertices[i + m.Length] = n[i];
-                uv[i + m.Length] = new Vector2(i * eachTriangleX , 1f);
-                normals[i + m.Length] = Vector3.back;
-                // CreateSphere(vertices[i], "vertice-" + i);
-                // CreateSphere(vertices[i + m.Length], "vertice-" + (i + m.Length));
-            }
-
-            int[] tris = new int[(m.Length - 1) * 6];
-            int j = 0;
-            for (int i = 0; i < m.Length - 1; i++)
-            {
-                tris[j] = i;
-                tris[j + 1] = i + 1;
-                tris[j + 2] = i + 1 + m.Length;
-                tris[j + 3] = i + 1 + m.Length;
-                tris[j + 4] = i + m.Length;
-                tris[j + 5] = i;
-
-                j += 6;
-            }
-
-            var mesh = new Mesh();
-            mesh.vertices = vertices;
-            mesh.triangles = tris;
-            mesh.normals = normals;
-            mesh.uv = uv;
-
-            return mesh;
-        }
-
-        public static Mesh CreateCircle(Vector3 center, float radius, int triangleNumber = 12)
-        {
-            Vector3[] circlePoints = GetCirclePoints(center, radius, triangleNumber);
-
+            int triangleNumber = points.Length;
             Vector3[] vertices = new Vector3[triangleNumber + 1];
             Vector2[] uv = new Vector2[vertices.Length];
             Vector3[] normals = new Vector3[vertices.Length];
@@ -62,11 +18,11 @@ namespace MeshCreatorTool
             {
                 if (i == 0)
                 {
-                    vertices[i] = new Vector3(center.x, center.y, center.z);
+                    vertices[i] = centerPoint;
                 }
                 else
                 {
-                    vertices[i] = circlePoints[i];
+                    vertices[i] = points[i - 1];
                 }
                 normals[i] = Vector3.back;
 
@@ -116,6 +72,78 @@ namespace MeshCreatorTool
             mesh.uv = uv;
             
             return mesh;
+        }
+
+        public static Mesh Create3dMesh(Vector3[] surfacePoints, float height)
+        {
+            Mesh surface1 = Create2dMesh(surfacePoints, Vector3.zero);
+            Vector3[] surfacePoints2 = new Vector3[surfacePoints.Length];
+            for (int i = 0; i < surfacePoints.Length; i++)
+                surfacePoints2[i] = surfacePoints[i] + new Vector3(0, 0, height);
+            Mesh surface2 = Create2dMesh(surfacePoints2, Vector3.zero);
+            Mesh body = CreateRectangle(surfacePoints, surfacePoints2);
+
+            CombineInstance[] combine = new CombineInstance[3];
+            combine[0].mesh = surface1;
+            combine[1].mesh = body;
+            combine[2].mesh = surface2;
+
+            combine[0].transform = Matrix4x4.zero;
+            combine[1].transform = Matrix4x4.zero;
+            combine[2].transform = Matrix4x4.zero;
+            
+            Mesh mesh = new Mesh();
+            mesh.CombineMeshes(combine, true, false);
+            return mesh;
+        }
+
+        public static Mesh CreateRectangle(Vector3[] m, Vector3[] n)
+        {
+            // vertices & uvs
+            Vector3[] vertices = new Vector3[m.Length + n.Length];
+            Vector2[] uv = new Vector2[vertices.Length];
+            Vector3[] normals = new Vector3[vertices.Length];
+            float eachTriangleX = 1f / (float)(m.Length - 1);
+            for (int i = 0; i < m.Length; i++)
+            {
+                vertices[i] = m[i];
+                uv[i] = new Vector2(i * eachTriangleX , 0f);
+                normals[i] = Vector3.back;
+
+                vertices[i + m.Length] = n[i];
+                uv[i + m.Length] = new Vector2(i * eachTriangleX , 1f);
+                normals[i + m.Length] = Vector3.back;
+                // CreateSphere(vertices[i], "vertice-" + i);
+                // CreateSphere(vertices[i + m.Length], "vertice-" + (i + m.Length));
+            }
+
+            int[] tris = new int[(m.Length - 1) * 6];
+            int j = 0;
+            for (int i = 0; i < m.Length - 1; i++)
+            {
+                tris[j] = i;
+                tris[j + 1] = i + 1;
+                tris[j + 2] = i + 1 + m.Length;
+                tris[j + 3] = i + 1 + m.Length;
+                tris[j + 4] = i + m.Length;
+                tris[j + 5] = i;
+
+                j += 6;
+            }
+
+            var mesh = new Mesh();
+            mesh.vertices = vertices;
+            mesh.triangles = tris;
+            mesh.normals = normals;
+            mesh.uv = uv;
+
+            return mesh;
+        }
+
+        public static Mesh CreateCircle(Vector3 center, float radius, int triangleNumber = 12)
+        {
+            Vector3[] circlePoints = GetCirclePoints(center, radius, triangleNumber);
+            return Create2dMesh(circlePoints, center);
         }
 
         public static Mesh CreateSylinder(Vector3 center, float radius, float height, int smoothness = 12)
@@ -194,5 +222,5 @@ namespace MeshCreatorTool
             go.transform.localScale = Vector3.one * 0.5f;
             return go;
         }
-    }    
+    }   
 }
